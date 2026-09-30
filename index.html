@@ -278,15 +278,42 @@ body{background:var(--bg);color:var(--txt);font-family:'Inter','Segoe UI',system
         updateCount();
     }
 
+    // UPDATED: Real API Call for Publishing
     function publishContent(id, platform) {
         const badge = document.getElementById(`c-status-${id}`);
+        const btn = badge.parentElement.querySelector('button');
+        
         badge.className = 'status-badge bg-processing';
         badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+        btn.disabled = true;
 
-        setTimeout(() => {
-            badge.className = 'status-badge bg-success';
-            badge.innerHTML = `<i class="fas fa-check"></i> Posted on ${platform}`;
-        }, 2000);
+        fetch('/api/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform: platform })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                badge.className = 'status-badge bg-success';
+                badge.innerHTML = `<i class="fas fa-check"></i> Posted on ${platform}`;
+                btn.innerHTML = '<i class="fas fa-check"></i> Done';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+            } else {
+                badge.className = 'status-badge bg-scheduled';
+                badge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+                btn.disabled = false;
+                alert("Error: " + (data.error || "Unknown error"));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            badge.className = 'status-badge bg-scheduled';
+            badge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+            btn.disabled = false;
+            alert("Network error. Is the backend running?");
+        });
     }
 
     // Add Client with Phone/Email
@@ -322,15 +349,51 @@ body{background:var(--bg);color:var(--txt);font-family:'Inter','Segoe UI',system
         updateCount();
     }
 
+    // UPDATED: Real API Call for WhatsApp/Call
     function sendClientMessage(id, method, contact) {
         const badge = document.getElementById(`cl-status-${id}`);
+        const btn = badge.parentElement.querySelector('button');
+        
         badge.className = 'status-badge bg-processing';
         badge.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Sending via ${method}...`;
+        btn.disabled = true;
 
-        setTimeout(() => {
-            badge.className = 'status-badge bg-success';
-            badge.innerHTML = `<i class="fas fa-check"></i> Sent to ${contact}`;
-        }, 1500);
+        const formattedContact = contact.startsWith('+') ? contact : '+' + contact;
+        const twilioContact = method === 'whatsapp' ? `whatsapp:${formattedContact}` : formattedContact;
+        
+        const endpoint = method === 'whatsapp' ? '/api/send-whatsapp' : '/api/make-call';
+        const messageText = "Hello! This is an automated test message from your Automation Agent.";
+
+        fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                to_number: twilioContact, 
+                message: messageText 
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                badge.className = 'status-badge bg-success';
+                badge.innerHTML = `<i class="fas fa-check"></i> Sent to ${contact}`;
+                btn.innerHTML = '<i class="fas fa-check"></i> Done';
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-secondary');
+            } else {
+                badge.className = 'status-badge bg-scheduled';
+                badge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+                btn.disabled = false;
+                alert("Error: " + (data.error || "Unknown error"));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            badge.className = 'status-badge bg-scheduled';
+            badge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+            btn.disabled = false;
+            alert("Network error. Is the backend running?");
+        });
     }
 </script>
 </body>
