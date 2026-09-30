@@ -2,6 +2,11 @@ import os
 import time
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
+from twilio.rest import Client
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
@@ -10,46 +15,57 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# In-memory database (Demo ke liye. Production mein SQLite/PostgreSQL use hoga)
-content_queue = []
-client_tasks = []
+# Twilio Client Setup
+account_sid = os.getenv('TWILIO_ACCOUNT_SID')
+auth_token = os.getenv('TWILIO_AUTH_TOKEN')
+twilio_number = os.getenv('TWILIO_PHONE_NUMBER')
+
+# Ensure credentials are loaded
+if not account_sid or not auth_token:
+    print("Warning: Twilio credentials not found in .env file!")
+
+client = Client(account_sid, auth_token)
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# API: CSV Upload handle karne ke liye
-@app.route('/api/upload-csv', methods=['POST'])
-def upload_csv():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file part"}), 400
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No selected file"}), 400
-    
-    if file and file.filename.endswith('.csv'):
-        filename = secure_filename(file.filename)
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(filepath)
-        return jsonify({"status": "success", "message": f"File {filename} uploaded successfully!"})
-    
-    return jsonify({"error": "Invalid file type"}), 400
-
-# API: Content Publish karne ka simulation
-@app.route('/api/publish', methods=['POST'])
-def publish_content():
+# API: WhatsApp Message Bhejne ke liye
+@app.route('/api/send-whatsapp', methods=['POST'])
+def send_whatsapp():
     data = request.json
-    # Yahan baad mein YouTube/LinkedIn API ka code aayega
-    time.sleep(2) # 2 second ka delay dikhane ke liye
-    return jsonify({"status": "success", "message": f"Successfully published to {data.get('platform')}"})
+    to_number = data.get('to_number')  # Format: 'whatsapp:+919876543210'
+    message_body = data.get('message')
 
-# API: Client Message send karne ka simulation
-@app.route('/api/send-message', methods=['POST'])
-def send_message():
+    try:
+        message = client.messages.create(
+            body=message_body,
+            from_=twilio_number,
+            to=to_number
+        )
+        return jsonify({"status": "success", "message_sid": message.sid, "message": "WhatsApp sent successfully!"})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+# API: Voice Call Karne ke liye
+@app.route('/api/make-call', methods=['POST'])
+def make_call():
     data = request.json
-    # Yahan baad mein Gmail/Twilio API ka code aayega
-    time.sleep(1.5) # 1.5 second ka delay
-    return jsonify({"status": "success", "message": f"Message sent to {data.get('contact')}"})
+    to_number = data.get('to_number')  # Format: '+919876543210'
+    
+    # Twilio ko ek URL chahiye jo call uthane par kya bole (TwiML). 
+    # Testing ke liye hum Twilio ka default demo URL use kar rahe hain.
+    twiml_url = "http://demo.twilio.com/docs/voice.xml"
+
+    try:
+        call = client.calls.create(
+            to=to_number,
+            from_=os.getenv('TWILIO_PHONE_NUMBER').replace('whatsapp:', ''), # Call ke liye 'whatsapp:' hata dena
+            url=twiml_url
+        )
+        return jsonify({"status": "success", "call_sid": call.sid, "message": "Call initiated successfully!"})
+    except Exception as e:
+        return jsonify({"status": "error", "error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
