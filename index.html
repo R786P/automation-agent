@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Automation Agent</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--bg:#0f1115;--side:#171a21;--panel:#1c2029;--line:#2a2f3a;--txt:#e7e9ee;--mute:#8b93a3;--acc:#7c8cff;--acc2:#5b6cf0;--ok:#34d399;--warn:#fbbf24;--info:#38bdf8}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:'Inter','Segoe UI',system-ui,sans-serif;margin:0;min-height:100vh}
+
+/* Layout */
+.app{display:flex;min-height:100vh}
+.sidebar{width:260px;background:var(--side);border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:1040;transition:transform .25s}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.05rem;padding:6px 8px 18px}
+.brand .logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--acc),#a78bfa);display:grid;place-items:center;color:#fff}
+.side-label{font-size:.75rem;color:var(--mute);padding:10px 10px 6px}
+.side-nav{display:flex;flex-direction:column;gap:4px}
+.side-nav .nav-link{display:flex;align-items:center;gap:10px;color:var(--mute);background:transparent;border:0;text-align:left;padding:11px 12px;border-radius:10px;font-weight:500;font-size:.93rem;width:100%}
+.side-nav .nav-link:hover{background:#222733;color:var(--txt)}
+.side-nav .nav-link.active{background:#262c3b;color:#fff;box-shadow:inset 3px 0 0 var(--acc)}
+.side-foot{margin-top:auto;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:.8rem;color:var(--mute)}
+.side-foot b{color:var(--txt);display:block;font-size:1.3rem}
+.main{margin-left:260px;flex:1;min-width:0;padding:26px 28px}
+.topbar{display:none;align-items:center;gap:12px;padding:12px 16px;background:var(--side);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:1030}
+.topbar button{background:none;border:0;color:var(--txt);font-size:1.3rem}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1035}
+
+/* Header + cards */
+.page-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+.page-head h4{margin:0;font-weight:700}
+.page-head p{margin:2px 0 0;color:var(--mute);font-size:.88rem}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;color:var(--txt);padding:20px}
+.btn{border-radius:10px;font-weight:600}
+.btn-primary{background:var(--acc2);border-color:var(--acc2)}
+.btn-primary:hover{background:var(--acc);border-color:var(--acc)}
+.btn-success{background:#10b981;border-color:#10b981;color:#04140d}
+.btn-outline-secondary{color:var(--txt);border-color:var(--line)}
+.btn-outline-secondary:hover{background:#262c3b;border-color:var(--line);color:#fff}
+
+/* Table */
+.table{--bs-table-bg:transparent;--bs-table-color:var(--txt);--bs-table-hover-bg:#222733;--bs-table-hover-color:var(--txt);--bs-table-border-color:var(--line);margin:0}
+.table thead th{color:var(--mute);font-weight:600;font-size:.8rem;border-bottom:1px solid var(--line)}
+.table td{vertical-align:middle}
+.table-wrap{overflow-x:auto}
+.status-badge{padding:5px 12px;border-radius:20px;font-size:.78rem;font-weight:600;white-space:nowrap;display:inline-block}
+.bg-scheduled{background:rgba(251,191,36,.15)!important;color:var(--warn)}
+.bg-processing{background:rgba(56,189,248,.15)!important;color:var(--info)}
+.bg-success{background:rgba(52,211,153,.15)!important;color:var(--ok)}
+.text-muted{color:var(--mute)!important}
+.empty-state{text-align:center;padding:50px 20px;color:var(--mute)}
+.empty-state i{font-size:2.6rem;margin-bottom:14px;color:var(--acc);opacity:.7}
+
+/* Modal + forms */
+.modal-content{background:var(--panel);color:var(--txt);border:1px solid var(--line);border-radius:16px}
+.modal-header{border-bottom:1px solid var(--line)}
+.btn-close{filter:invert(1)}
+.form-label{font-size:.85rem;color:var(--mute);font-weight:500}
+.form-control,.form-select{background:#12151c;border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:10px 12px}
+.form-control:focus,.form-select:focus{background:#12151c;color:var(--txt);border-color:var(--acc);box-shadow:0 0 0 3px rgba(124,140,255,.2)}
+.form-control::placeholder{color:#5d6472}
+
+/* Mobile */
+@media(max-width:991px){
+  .sidebar{transform:translateX(-100%)}
+  .sidebar.open{transform:none}
+  .overlay.show{display:block}
+  .main{margin-left:0;padding:18px 14px}
+  .topbar{display:flex}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+    <button onclick="toggleSidebar()" aria-label="Menu"><i class="fas fa-bars"></i></button>
+    <b><i class="fas fa-robot me-2" style="color:var(--acc)"></i>My Automation Agent</b>
+</div>
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<div class="app">
+    <aside class="sidebar" id="sidebar">
+        <div class="brand"><div class="logo"><i class="fas fa-robot"></i></div> My Automation Agent</div>
+        <div class="side-label">Workspace</div>
+        <ul class="nav side-nav" role="tablist">
+            <li><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#content" onclick="closeSidebar()"><i class="fas fa-video"></i> Post / Video Publishing</button></li>
+            <li><button class="nav-link" data-bs-toggle="tab" data-bs-target="#client" onclick="closeSidebar()"><i class="fas fa-phone-alt"></i> Client Call / Message</button></li>
+        </ul>
+        <div class="side-foot">Total items<b id="totalCount">0</b>Posts + client tasks</div>
+    </aside>
+
+    <main class="main">
+        <div class="tab-content">
+            <!-- Content Module -->
+            <div class="tab-pane fade show active" id="content">
+                <div class="page-head">
+                    <div><h4>My Content Publishing</h4><p>Queue your posts and publish in one tap</p></div>
+                    <div>
+                        <input type="file" id="csvFile" accept=".csv" style="display:none;" onchange="handleCSVUpload(event)">
+                        <button class="btn btn-outline-secondary btn-sm me-2" onclick="document.getElementById('csvFile').click()"><i class="fas fa-upload me-1"></i> Upload CSV</button>
+                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addPostModal"><i class="fas fa-plus me-1"></i> Add New Post</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div id="emptyState" class="empty-state"><i class="fas fa-cloud-upload-alt"></i><p class="mb-0">No content yet. Add posts or upload CSV.</p></div>
+                    <div id="contentTable" class="table-wrap" style="display:none;">
+                        <table class="table table-hover"><thead><tr><th>Title</th><th>Platform</th><th>Content</th><th>Schedule</th><th>Status</th><th>Action</th></tr></thead><tbody id="contentTableBody"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Module -->
+            <div class="tab-pane fade" id="client">
+                <div class="page-head">
+                    <div><h4>Client Communication</h4><p>Email, WhatsApp and call tasks in one place</p></div>
+                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#addClientModal"><i class="fas fa-plus me-1"></i> New Task</button>
+                </div>
+                <div class="card">
+                    <div id="clientEmptyState" class="empty-state"><i class="fas fa-address-book"></i><p class="mb-0">No client tasks yet.</p></div>
+                    <div id="clientTable" class="table-wrap" style="display:none;">
+                        <table class="table table-hover"><thead><tr><th>Client</th><th>Contact</th><th>Method</th><th>Notes</th><th>Status</th><th>Action</th></tr></thead><tbody id="clientTableBody"></tbody></table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Add Post Modal with File Upload -->
+<div class="modal fade" id="addPostModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">Add New Post/Video</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="addPostForm">
+                    <div class="mb-3"><label class="form-label">Content Title *</label><input type="text" class="form-control" id="postTitle" required></div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Platform *</label>
+                            <select class="form-select" id="postPlatform">
+                                <option>YouTube</option>
+                                <option>LinkedIn</option>
+                                <option>Instagram</option>
+                                <option>Twitter</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Schedule Time *</label>
+                            <input type="text" class="form-control" id="postTime" placeholder="e.g. 25 Oct, 6 PM" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Content File (Video/Image) *</label>
+                        <input type="file" class="form-control" id="postFile" accept="video/*,image/*" required>
+                        <small class="text-muted">Upload video or image to publish</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Caption/Description</label>
+                        <textarea class="form-control" id="postCaption" rows="3" placeholder="AI will generate if empty..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Add to Queue</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Client Modal with Phone/Email -->
+<div class="modal fade" id="addClientModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">New Client Task</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="addClientForm">
+                    <div class="mb-3"><label class="form-label">Client Name *</label><input type="text" class="form-control" id="clientName" required></div>
+                    <div class="mb-3">
+                        <label class="form-label">Contact Method *</label>
+                        <select class="form-select" id="clientMethod" onchange="toggleContactField()">
+                            <option value="email">Email (Gmail)</option>
+                            <option value="whatsapp">WhatsApp</option>
+                            <option value="call">Voice Call</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="emailField">
+                        <label class="form-label">Email Address *</label>
+                        <input type="email" class="form-control" id="clientEmail" placeholder="client@example.com">
+                    </div>
+                    <div class="mb-3" id="phoneField" style="display:none;">
+                        <label class="form-label">Phone Number *</label>
+                        <input type="tel" class="form-control" id="clientPhone" placeholder="+91 98765 43210">
+                    </div>
+                    <div class="mb-3"><label class="form-label">Purpose / Notes *</label><textarea class="form-control" id="clientNotes" rows="3" required></textarea></div>
+                    <div class="mb-3">
+                        <label class="form-label">Attachments (Optional)</label>
+                        <input type="file" class="form-control" id="clientAttachment" multiple>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Create Task</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Sidebar (mobile)
+    function toggleSidebar() {
+        document.getElementById('sidebar').classList.toggle('open');
+        document.getElementById('overlay').classList.toggle('show');
+    }
+    function closeSidebar() {
+        document.getElementById('sidebar').classList.remove('open');
+        document.getElementById('overlay').classList.remove('show');
+    }
+    function updateCount() {
+        document.getElementById('totalCount').textContent =
+            document.getElementById('contentTableBody').children.length +
+            document.getElementById('clientTableBody').children.length;
+    }
+
+    // Toggle Email/Phone field based on method
+    function toggleContactField() {
+        const method = document.getElementById('clientMethod').value;
+        if (method === 'email') {
+            document.getElementById('emailField').style.display = 'block';
+            document.getElementById('phoneField').style.display = 'none';
+        } else {
+            document.getElementById('emailField').style.display = 'none';
+            document.getElementById('phoneField').style.display = 'block';
+        }
+    }
+
+    // CSV Upload
+    function handleCSVUpload(event) {
+        const file = event.target.files[0]; if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const rows = e.target.result.split('\n');
+            for (let i = 1; i < rows.length; i++) {
+                const cols = rows[i].split(',');
+                if (cols.length >= 3) addContentRow(cols[0].trim(), cols[1].trim(), cols[2].trim(), 'CSV Upload');
+            }
+        }; reader.readAsText(file);
+    }
+
+    // Add Post with File
+    document.getElementById('addPostForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const title = document.getElementById('postTitle').value;
+        const platform = document.getElementById('postPlatform').value;
+        const time = document.getElementById('postTime').value;
+        const file = document.getElementById('postFile').files[0];
+        const caption = document.getElementById('postCaption').value || 'Auto-generated by AI';
+
+        addContentRow(title, platform, time, file.name, caption);
+        this.reset();
+        bootstrap.Modal.getInstance(document.getElementById('addPostModal')).hide();
+    });
+
+    function addContentRow(title, platform, time, fileName, caption) {
+        caption = caption || '';
+        const id = Date.now() + Math.floor(Math.random() * 1000);
+        const tbody = document.getElementById('contentTableBody');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold">${title}</td>
+            <td>${platform}</td>
+            <td><small>${fileName}<br><span class="text-muted">${caption.substring(0,30)}...</span></small></td>
+            <td>${time}</td>
+            <td><span class="status-badge bg-scheduled" id="c-status-${id}">Ready</span></td>
+            <td><button class="btn btn-primary btn-sm" onclick="publishContent(${id}, '${platform}')">Publish</button></td>
+        `;
+        tbody.appendChild(tr);
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('contentTable').style.display = 'block';
+        updateCount();
+    }
+
+    function publishContent(id, platform) {
+        const badge = document.getElementById(`c-status-${id}`);
+        badge.className = 'status-badge bg-processing';
+        badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+        setTimeout(() => {
+            badge.className = 'status-badge bg-success';
+            badge.innerHTML = `<i class="fas fa-check"></i> Posted on ${platform}`;
+        }, 2000);
+    }
+
+    // Add Client with Phone/Email
+    document.getElementById('addClientForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const name = document.getElementById('clientName').value;
+        const method = document.getElementById('clientMethod').value;
+        const notes = document.getElementById('clientNotes').value;
+        const contact = method === 'email' ? document.getElementById('clientEmail').value : document.getElementById('clientPhone').value;
+
+        addClientRow(name, contact, method, notes);
+        this.reset();
+        toggleContactField();
+        bootstrap.Modal.getInstance(document.getElementById('addClientModal')).hide();
+    });
+
+    function addClientRow(name, contact, method, notes) {
+        const id = Date.now() + Math.floor(Math.random() * 1000);
+        const tbody = document.getElementById('clientTableBody');
+        const methodIcon = method === 'email' ? 'fas fa-envelope' : method === 'whatsapp' ? 'fab fa-whatsapp' : 'fas fa-phone';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td class="fw-bold">${name}</td>
+            <td><small>${contact}</small></td>
+            <td><i class="${methodIcon}"></i> ${method.toUpperCase()}</td>
+            <td><small>${notes}</small></td>
+            <td><span class="status-badge bg-scheduled" id="cl-status-${id}">Draft</span></td>
+            <td><button class="btn btn-success btn-sm" onclick="sendClientMessage(${id}, '${method}', '${contact}')">Send</button></td>
+        `;
+        tbody.appendChild(tr);
+        document.getElementById('clientEmptyState').style.display = 'none';
+        document.getElementById('clientTable').style.display = 'block';
+        updateCount();
+    }
+
+    function sendClientMessage(id, method, contact) {
+        const badge = document.getElementById(`cl-status-${id}`);
+        badge.className = 'status-badge bg-processing';
+        badge.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Sending via ${method}...`;
+
+        setTimeout(() => {
+            badge.className = 'status-badge bg-success';
+            badge.innerHTML = `<i class="fas fa-check"></i> Sent to ${contact}`;
+        }, 1500);
+    }
+</script>
+</body>
+</html>
